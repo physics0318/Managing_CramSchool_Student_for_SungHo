@@ -1,3 +1,4 @@
+from matplotlib.pyplot import contour
 import openpyxl as xl
 from openpyxl.styles import Side, Border, PatternFill, Color, Font, Alignment
 import pandas as pd
@@ -77,9 +78,10 @@ class MyFrame(tk.Frame):
             self.findTable(ws)
             row = self.df.shape[1]
             column = self.df.shape[0]
+            self.avgList = self.getAverage()
             if row:
                 for i in range(row):
-                    self.createTable(R, C, row, column)
+                    self.createTable(i, R, C, row, column)
                     R += column+10
 
         #대충 왼쪽 창에 결과물 보여주는 코드 추가필요
@@ -102,18 +104,37 @@ class MyFrame(tk.Frame):
 
         self.df = pd.DataFrame()
         personalData = []
+        self.dateList = []
 
         while sheet.cell(row=self.i-self.j+rowCnt, column=self.j+columnCnt).value:
             personalData.append(sheet.cell(row=self.i-self.j+rowCnt,column=self.j+columnCnt).value)
-            columnCnt += 1
+            rowCnt += 1
             if not sheet.cell(row=self.i-self.j+rowCnt, column=self.j+columnCnt).value:
-                self.df[str(personalData[0])] = personalData[1:columnCnt]
-                rowCnt += 1
-                columnCnt = 0
+                self.df[str(personalData[0])] = personalData[1:rowCnt]
+                columnCnt += 1
+                rowCnt = 0
+                self.dateList.append(personalData[0])
                 personalData = []
+        self.dateList.remove(self.dateList[0])
         self.j -= 1
 
-    def createTable(self, X, Y, row, column):
+    def getAverage(self):
+        averageList = []
+
+        for j in range(len(self.dateList)):
+            sum = 0
+            cnt = 0
+            for i in range(len(self.df)):
+                if self.df.iloc[i][str(self.dateList[j])]=='미응시':
+                    continue
+                else:
+                    sum += self.df.iloc[i][str(self.dateList[j])]
+                    cnt += 1
+            avg = sum/cnt
+            averageList.append(avg)
+        return averageList
+
+    def createTable(self, studentNumber, X, Y, row, column):
         self.WS.merge_cells(start_row=X,start_column=Y,end_row=X,end_column=Y+8)
         self.WS.cell(row=X, column=Y).value = "수학원정대 토요 클리닉 월별 점수"
         self.WS.cell(row=X, column=Y).alignment = Alignment(horizontal='center',
@@ -139,6 +160,10 @@ class MyFrame(tk.Frame):
                                                             fgColor=Color('00FFFF'))
 
         self.WS.merge_cells(start_row=X+2,start_column=Y+1,end_row=X+3,end_column=Y+2)
+        self.WS.cell(row=X+2, column=Y+1).value = self.df.iloc[studentNumber]['이름']
+        self.WS.cell(row=X+2, column=Y+1).font = Font(bold=True)
+        self.WS.cell(row=X+2, column=Y+1).alignment = Alignment(horizontal='center',
+                                                                vertical='center')
 
         self.WS.cell(row=X+2, column=Y+3).value="학교"
         self.WS.cell(row=X+2, column=Y+5).value="반명"
@@ -187,6 +212,28 @@ class MyFrame(tk.Frame):
         self.WS.cell(row=X+5, column=Y+1).font=Font(bold=True)
         self.WS.cell(row=X+5, column=Y+2).font=Font(bold=True)
         self.WS.cell(row=X+5, column=Y+3).font=Font(bold=True)
+        self.WS.cell(row=X+5, column=Y).alignment=Alignment(horizontal='center',
+                                                                vertical='center')
+        self.WS.cell(row=X+5, column=Y+1).alignment=Alignment(horizontal='center',
+                                                                vertical='center')
+        self.WS.cell(row=X+5, column=Y+2).alignment=Alignment(horizontal='center',
+                                                                vertical='center')
+        self.WS.cell(row=X+5, column=Y+3).alignment=Alignment(horizontal='center',
+                                                                vertical='center')
+
+        for i in range(len(self.dateList)):
+            self.WS.cell(row=X+6+i, column=Y).value = self.dateList[i].strftime("%m/%d".encode('unicode-escape').decode()).encode().decode('unicode-escape')
+            self.WS.cell(row=X+6+i, column=Y+2).value = self.df.iloc[studentNumber][str(self.dateList[i])]
+            self.WS.cell(row=X+6+i, column=Y+3).value = self.avgList[i]
+            self.WS.cell(row=X+6+i, column=Y).alignment = Alignment(horizontal='center',
+                                                                    vertical='center')
+            self.WS.cell(row=X+6+i, column=Y+2).alignment = Alignment(horizontal='center',
+                                                                        vertical='center')
+            self.WS.cell(row=X+6+i, column=Y+3).alignment = Alignment(horizontal='center',
+                                                                        vertical='center')
+            self.WS.cell(row=X+6+i, column=Y).font = Font(bold=True)
+            self.WS.cell(row=X+6+i, column=Y+2).font = Font(bold=True)
+            self.WS.cell(row=X+6+i, column=Y+3).font = Font(bold=True)
 
         self.WS.merge_cells(start_row=X+5,start_column=Y+5,end_row=X+5+column,end_column=Y+8)
 
