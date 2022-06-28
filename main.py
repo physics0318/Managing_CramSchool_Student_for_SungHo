@@ -1,6 +1,9 @@
 from matplotlib.pyplot import contour
+from numpy import average
 import openpyxl as xl
 from openpyxl.styles import Side, Border, PatternFill, Color, Font, Alignment
+from openpyxl.chart import BarChart, LineChart, Reference
+from openpyxl.chart.layout import Layout, ManualLayout
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog as fd
@@ -75,14 +78,19 @@ class MyFrame(tk.Frame):
         R = 2
         C = 2
         while self.i < 100:
-            self.findTable(ws)
-            row = self.df.shape[1]
-            column = self.df.shape[0]
-            self.avgList = self.getAverage()
-            if row:
+            goOn = self.findTable(ws)
+
+            if goOn:
+                column = self.df.shape[1]
+                row = self.df.shape[0]
+                self.avgList = self.getAverage()
+
                 for i in range(row):
                     self.createTable(i, R, C, row, column)
                     R += column+10
+
+            else:
+                break
 
         #대충 왼쪽 창에 결과물 보여주는 코드 추가필요
         wb.close()
@@ -117,6 +125,8 @@ class MyFrame(tk.Frame):
                 personalData = []
         self.dateList.remove(self.dateList[0])
         self.j -= 1
+        
+        return True
 
     def getAverage(self):
         averageList = []
@@ -131,6 +141,8 @@ class MyFrame(tk.Frame):
                     sum += self.df.iloc[i][str(self.dateList[j])]
                     cnt += 1
             avg = sum/cnt
+            avg = "%0.1f" %avg
+            avg = float(avg)
             averageList.append(avg)
         return averageList
 
@@ -222,6 +234,10 @@ class MyFrame(tk.Frame):
                                                                 vertical='center')
 
         for i in range(len(self.dateList)):
+            scoreList = []
+            scoreList.append(self.df.iloc[studentNumber][str(self.dateList[i])])
+            minScore = min(scoreList)
+
             self.WS.cell(row=X+6+i, column=Y).value = self.dateList[i].strftime("%m/%d".encode('unicode-escape').decode()).encode().decode('unicode-escape')
             self.WS.cell(row=X+6+i, column=Y+2).value = self.df.iloc[studentNumber][str(self.dateList[i])]
             self.WS.cell(row=X+6+i, column=Y+3).value = self.avgList[i]
@@ -236,6 +252,27 @@ class MyFrame(tk.Frame):
             self.WS.cell(row=X+6+i, column=Y+3).font = Font(bold=True)
 
         self.WS.merge_cells(start_row=X+5,start_column=Y+5,end_row=X+5+column,end_column=Y+8)
+        BarPos = self.WS.cell(row=X+5, column=Y+5).coordinate
+        BarCats = Reference(self.WS, min_row=X+6, min_col=Y, max_row=X+6+len(self.dateList), max_col=Y)
+        ScoreData = Reference(self.WS, min_row=X+6, min_col=Y+2, max_row=X+6+len(self.dateList), max_col=Y+2)
+        ScoreChart = BarChart()
+        ScoreChart.add_data(ScoreData)
+        ScoreChart.set_categories(BarCats)
+        ScoreChart.y_axis.scaling.max = 100
+        ScoreChart.width = 4/0.55
+        ScoreChart.height = (len(self.dateList)+2)/1.8
+
+
+        AverageChart = LineChart()
+        AverageData = Reference(self.WS, min_row=X+6, min_col=Y+3, max_row=X+6+len(self.dateList), max_col=Y+3)
+        AverageChart.add_data(AverageData)
+        ScoreChart += AverageChart
+        ScoreChart.y_axis.scaling.min = max(min(minScore, min(self.avgList))-10, 0)
+        ScoreChart.legend = None
+
+        self.WS.add_chart(ScoreChart, BarPos)
+        
+
 
         for i in range(9):
             for j in range(6+column):
